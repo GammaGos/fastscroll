@@ -171,12 +171,17 @@
         //获取scroller的样式
         var matrix = window.getComputedStyle(this.scroller, null),
             x, y;
+            console.log("getComputedPosition------",matrix.webkitTransform);
 
         matrix = matrix.webkitTransform.split(')')[0].split(', ');
         x = +(matrix[12] || matrix[4]);
         y = +(matrix[13] || matrix[5]);
         //返回 (x ,y)  or (top ,left)
+
         return { x: x, y: y };
+
+
+
     },
     _init: function () {
       this._initEvents();
@@ -213,11 +218,17 @@
       如果还在运动中,则快速滚到结束位置
       */
      if ( this.isInTransition ) {
+       console.log('--------------in transition............',this.scrollerStyle.webkitTransitionDuration);
          this.isInTransition = false;
          // 获取当前位置
          var pos = this.getComputedPosition();
          // 滑动到当前位置 相当于停止于此处
          this._translate(Math.round(pos.x), Math.round(pos.y));
+         /*
+         防止连续滑动产生的错乱
+          */
+         this.startX = this.x;
+   			 this.startY = this.y;
 
      }
       if (this.options.onScrollStart) this.options.onScrollStart.call(this, event);
@@ -285,11 +296,11 @@
 
   		if (newX > 0 || newX < that.maxScrollX) {
 
-  			newX = that.options.bounce ? that.x + (deltaX / 2) : newX >= 0 || that.maxScrollX >= 0 ? 0 : that.maxScrollX;
+  			newX = that.options.bounce ? that.x + (deltaX / 3) : newX >= 0 || that.maxScrollX >= 0 ? 0 : that.maxScrollX;
   		}
   		if (newY > this.minScrollY || newY < this.maxScrollY) {
 
-  			newY = this.options.bounce ? this.y + (deltaY / 2) : newY >= this.minScrollY || this.maxScrollY >= 0 ? this.minScrollY : this.maxScrollY;
+  			newY = this.options.bounce ? this.y + (deltaY / 3) : newY >= this.minScrollY || this.maxScrollY >= 0 ? this.minScrollY : this.maxScrollY;
   		}
 
       // this._trigger('scrollStart');
@@ -307,7 +318,7 @@
       if(this.options.onScrollMove) this.options.onScrollMove.call(this, event);
     },
     _onEnd:function onEnd(event){
-      console.log('_onEnd');
+
 
       var that = this;
       this.isInTransition = 0;
@@ -315,6 +326,11 @@
       var newY = Math.round(this.y);
 
       var duration = getTime() - this.startTime;
+        console.log('_onEnd::y:',this.y,"duration::"+duration);
+
+
+
+
       var momentumX = this.hasHorizontalScroll ? momentum(this.x, this.startX, duration, this.maxScrollX, this.options.bounce ? this.wrapperWidth : 0, this.options.deceleration) : { destination: newX, duration: 0 };
       var momentumY = this.hasVerticalScroll ? momentum(this.y, this.startY, duration, this.maxScrollY, this.options.bounce ? this.wrapperHeight : 0, this.options.deceleration) : { destination: newY, duration: 0 };
 
@@ -324,9 +340,11 @@
       newX = momentumX.destination;
 
       newY = momentumY.destination;
+      console.log('_onEnd::newY:',newY);
+      console.log(this.y, this.startY, duration, this.maxScrollY, this.options.bounce);
 
 
-        console.log(momentumX,momentumY);
+        // console.log(momentumX,momentumY);
       var time = Math.max(momentumX.duration, momentumY.duration);
       // var time = momentumY.duration;
       var easing = ease.quadratic;
@@ -361,7 +379,7 @@
     },
 
     _translate:function _translate(x, y){
-      console.log("_translate::",x, y);
+      console.log("_translate::y:", y);
       this.scrollerStyle.webkitTransform = 'translate(' + x + 'px,' + y + 'px)' + this.translateZ;
 
       this.x = x;
@@ -402,7 +420,7 @@
       // return;
       //禁止掉其它动画的影响，如loading动画 e.target != this.scroller
       if ( e.target != this.scroller || !this.isInTransition ) {
-          console.log('---------------',this.isInTransition);
+          // console.log('---------------',this.isInTransition);
            return;
        }
 

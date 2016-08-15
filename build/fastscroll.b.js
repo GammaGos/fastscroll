@@ -105,6 +105,7 @@
         },
         getComputedPosition: function() {
             var matrix = window.getComputedStyle(this.scroller, null), x, y;
+            console.log("getComputedPosition------", matrix.webkitTransform);
             matrix = matrix.webkitTransform.split(")")[0].split(", ");
             x = +(matrix[12] || matrix[4]);
             y = +(matrix[13] || matrix[5]);
@@ -139,9 +140,12 @@
             this.pointX = point.pageX;
             this.pointY = point.pageY;
             if (this.isInTransition) {
+                console.log("--------------in transition............", this.scrollerStyle.webkitTransitionDuration);
                 this.isInTransition = false;
                 var pos = this.getComputedPosition();
                 this._translate(Math.round(pos.x), Math.round(pos.y));
+                this.startX = this.x;
+                this.startY = this.y;
             }
             if (this.options.onScrollStart) this.options.onScrollStart.call(this, event);
             this._bind(MOVE_EV);
@@ -184,10 +188,10 @@
                 return;
             }
             if (newX > 0 || newX < that.maxScrollX) {
-                newX = that.options.bounce ? that.x + deltaX / 2 : newX >= 0 || that.maxScrollX >= 0 ? 0 : that.maxScrollX;
+                newX = that.options.bounce ? that.x + deltaX / 3 : newX >= 0 || that.maxScrollX >= 0 ? 0 : that.maxScrollX;
             }
             if (newY > this.minScrollY || newY < this.maxScrollY) {
-                newY = this.options.bounce ? this.y + deltaY / 2 : newY >= this.minScrollY || this.maxScrollY >= 0 ? this.minScrollY : this.maxScrollY;
+                newY = this.options.bounce ? this.y + deltaY / 3 : newY >= this.minScrollY || this.maxScrollY >= 0 ? this.minScrollY : this.maxScrollY;
             }
             this.moved = true;
             this._translate(newX, newY);
@@ -200,12 +204,12 @@
             if (this.options.onScrollMove) this.options.onScrollMove.call(this, event);
         },
         _onEnd: function onEnd(event) {
-            console.log("_onEnd");
             var that = this;
             this.isInTransition = 0;
             var newX = Math.round(this.x);
             var newY = Math.round(this.y);
             var duration = getTime() - this.startTime;
+            console.log("_onEnd::y:", this.y, "duration::" + duration);
             var momentumX = this.hasHorizontalScroll ? momentum(this.x, this.startX, duration, this.maxScrollX, this.options.bounce ? this.wrapperWidth : 0, this.options.deceleration) : {
                 destination: newX,
                 duration: 0
@@ -216,7 +220,8 @@
             };
             newX = momentumX.destination;
             newY = momentumY.destination;
-            console.log(momentumX, momentumY);
+            console.log("_onEnd::newY:", newY);
+            console.log(this.y, this.startY, duration, this.maxScrollY, this.options.bounce);
             var time = Math.max(momentumX.duration, momentumY.duration);
             var easing = ease.quadratic;
             this._unbind(MOVE_EV);
@@ -237,7 +242,7 @@
             this._translate(x, y);
         },
         _translate: function _translate(x, y) {
-            console.log("_translate::", x, y);
+            console.log("_translate::y:", y);
             this.scrollerStyle.webkitTransform = "translate(" + x + "px," + y + "px)" + this.translateZ;
             this.x = x;
             this.y = y;
@@ -279,7 +284,6 @@
         _onTransitionEnd: function(e) {
             console.log("_onTransitionEnd");
             if (e.target != this.scroller || !this.isInTransition) {
-                console.log("---------------", this.isInTransition);
                 return;
             }
             this._transitionTime();
