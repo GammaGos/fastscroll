@@ -5,7 +5,7 @@ FastScroll是对iscroll、iscroll-lite的重写，主要解决在微信、webkit
 
 源码：14k
 
-压缩后L：7k
+压缩后：7k
 
 gzip:2k
 
