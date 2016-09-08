@@ -1,4 +1,8 @@
 ;(function (window, document, Math) {
+
+  var rAF = window.requestAnimationFrame	||
+  	window.webkitRequestAnimationFrame	||
+  	function (callback) { window.setTimeout(callback, 1000 / 60); };
     /**
      *定义事件名称
      */
@@ -80,6 +84,7 @@
      * @param {[type]} options [description]
      */
     function IScroll(el,options){
+
         /*
          去除掉#wrapper这种形式的传入
          */
@@ -91,6 +96,7 @@
 
         this.scroller = this.wrapper.children[0];
         this.scrollerStyle = this.scroller.style;
+        this._events = {};
         this.options = {
             momentum:true,
 
@@ -110,18 +116,26 @@
             directionLockThreshold:5,
 
             // Events
-            onfunction:function(e) { e.preventDefault()},
+            onfunction:function(e) { e.preventDefault(); },
             onScrollStart: null,
             onBeforeScrollMove: null,
-            onScrollMove: null,
+            onScrollMove: function(){
+              console.log('ScrollY::',this.y);
+            },
             onBeforeScrollEnd: null,
-            onScrollEnd: null
+            onScrollEnd: null,
+            useTransition:true
 
         }
         for ( var i in options ) {
             this.options[i] = options[i];
         }
         this.options.bounceEasing = ease.circular;
+
+        if ( this.options.probeType == 3 ) {
+      		this.options.useTransition = false;
+        }
+
         this.x = 0;
         this.y = 0;
         this.directionX = 0;
@@ -131,6 +145,7 @@
         this._init();
         this.refresh()
         this.scrollTo(this.options.startX, this.options.startY);
+        // return this;
     }
     IScroll.prototype = {
         refresh:function refresh(){
@@ -210,6 +225,7 @@
                 event.preventDefault();
             }
             if (this.options.onBeforeScrollStart) this.options.onBeforeScrollStart.call(this, event);
+            this._execEvent('onBeforeScrollStart');
             this.moved    = false;
             var point = event.touches ? event.touches[0] : event;
             this.distX    = 0;        //
@@ -230,7 +246,7 @@
             /*
              如果还在运动中,则快速滚到结束位置
              */
-            if ( this.isInTransition ) {
+            if ( this.options.useTransition && this.isInTransition ) {
                 console.log('--------------in transition............',this.scrollerStyle.webkitTransitionDuration);
                 that.isInTransition = false;
                 // 获取当前位置
@@ -242,8 +258,13 @@
                  */
                 that.startX = that.x;
                 that.startY = that.y;
+            }else if(!this.options.useTransition && this.isAnimating){
+              this.isAnimating = false;
+        			this._execEvent('scrollEnd');
             }
+
             if (this.options.onScrollStart) this.options.onScrollStart.call(this, event);
+            this._execEvent('onScrollStart');
             this._bind(MOVE_EV);
             this._bind(END_EV);
             this._bind(CANCEL_EV);
@@ -262,6 +283,7 @@
             var deltaY  = point.pageY - this.pointY;    // 触点增量y
 
             if (that.options.onBeforeScrollMove) that.options.onBeforeScrollMove.call(that, event);
+            this._execEvent('onBeforeScrollMove');
             var timestamp = getTime();
             var absDistX, absDistY,newX,newY;
             // 最近上一次的触点位置
@@ -328,9 +350,16 @@
                 this.startTime = timestamp;
                 this.startX = this.x;
                 this.startY = this.y;
-            }
 
+          			if ( this.options.probeType == 1 ) {
+          				this._execEvent('scroll');
+          			}
+            }
+            if ( this.options.probeType > 1 ) {
+        			this._execEvent('scroll');
+        		}
             if(this.options.onScrollMove) this.options.onScrollMove.call(this, event);
+            this._execEvent('onScrollMove');
         },
         _onEnd:function onEnd(event){
           console.log('_onEnd');
@@ -350,6 +379,7 @@
 
             var easing = '';
             if (that.options.onBeforeScrollEnd) that.options.onBeforeScrollEnd.call(that, event);
+            this._execEvent('onBeforeScrollEnd');
             // 超过了边界就重新回到边界位
             this.endTime = getTime();
 
@@ -363,6 +393,7 @@
             if ( !this.moved ) {
               console.log('---------onScrollCancel');
                if(this.options.onScrollCancel) this.options.onScrollCancel.call(this, event);
+               this._execEvent('onScrollCancel');
                return;
            }
            console.log("flick::",duration,distanceX,distanceY);
@@ -421,14 +452,13 @@
 
             easing = easing || ease.circular;
             this.isInTransition = time > 0;
-
-
-              console.log('scrollTo::',x, y, time, easing);
-
-            this._transitionTimingFunction(easing.style);
-            this._transitionTime(time);
-
-            this._translate(x, y);
+            if ( !time || (this.options.useTransition && easing.style) ) {
+              this._transitionTimingFunction(easing.style);
+              this._transitionTime(time);
+              this._translate(x, y);
+            } else {
+              this._animate(x, y, time, easing.fn);
+            }
 
         },
 
@@ -482,6 +512,10 @@
                 this.isInTransition = false;
                 this._unbind('webkitTransitionEnd');
                 if (this.options.onScrollEnd) this.options.onScrollEnd.call(this);
+                this._execEvent('onScrollEnd');
+                if ( this.options.probeType ) {
+                  this._execEvent('scroll');
+                }
             }
         },
         _resetPos:function(time){
@@ -529,7 +563,74 @@
               console.log('-----3------');
             this.scrollTo(x, y, time, this.options.bounceEasing);
             return true;
-        }
+        },
+        on: function (type, fn) {
+      		if ( !this._events[type] ) {
+      			this._events[type] = [];
+      		}
+
+      		this._events[type].push(fn);
+      	},
+        _execEvent: function (type) {
+      		console.log('_execEvent:',type);
+      		if ( !this._events[type] ) {
+      			return;
+      		}
+
+      		var i = 0,
+      			l = this._events[type].length;
+
+      		if ( !l ) {
+      			return;
+      		}
+
+      		for ( ; i < l; i++ ) {
+      			this._events[type][i].apply(this, [].slice.call(arguments, 1));
+      		}
+      	},
+        _animate: function (destX, destY, duration, easingFn) {
+      		var that = this,
+      			startX = this.x,
+      			startY = this.y,
+      			startTime = getTime(),
+      			destTime = startTime + duration;
+
+      		function step () {
+      			var now = getTime(),
+      				newX, newY,
+      				easing;
+
+      			if ( now >= destTime ) {
+      				that.isAnimating = false;
+      				that._translate(destX, destY);
+
+      				if ( !that._resetPos(that.options.bounceTime) ) {
+      					that._execEvent('scrollEnd');
+      				}
+
+      				return;
+      			}
+
+      			now = ( now - startTime ) / duration;
+      			easing = easingFn(now);
+      			newX = ( destX - startX ) * easing + startX;
+      			newY = ( destY - startY ) * easing + startY;
+      			that._translate(newX, newY);
+
+      			if ( that.isAnimating ) {
+      				rAF(step);
+      			}
+
+      			if ( that.options.probeType == 3 ) {
+      				that._execEvent('scroll');
+      			}
+      		}
+
+      		this.isAnimating = true;
+      		step();
+      	}
+
+
 
     }
     window.FastScroll=window.fs=window.FS = window.is=window.IS = IScroll;
