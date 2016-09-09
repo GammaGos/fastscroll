@@ -225,7 +225,7 @@
                 event.preventDefault();
             }
             if (this.options.onBeforeScrollStart) this.options.onBeforeScrollStart.call(this, event);
-            this._execEvent('onBeforeScrollStart');
+            this._execEvent('beforeScrollStart');
             this.moved    = false;
             var point = event.touches ? event.touches[0] : event;
             this.distX    = 0;        //
@@ -264,7 +264,7 @@
             }
 
             if (this.options.onScrollStart) this.options.onScrollStart.call(this, event);
-            this._execEvent('onScrollStart');
+            this._execEvent('scrollStart');
             this._bind(MOVE_EV);
             this._bind(END_EV);
             this._bind(CANCEL_EV);
@@ -283,7 +283,7 @@
             var deltaY  = point.pageY - this.pointY;    // 触点增量y
 
             if (that.options.onBeforeScrollMove) that.options.onBeforeScrollMove.call(that, event);
-            this._execEvent('onBeforeScrollMove');
+            this._execEvent('beforeScrollMove');
             var timestamp = getTime();
             var absDistX, absDistY,newX,newY;
             // 最近上一次的触点位置
@@ -359,7 +359,7 @@
         			this._execEvent('scroll');
         		}
             if(this.options.onScrollMove) this.options.onScrollMove.call(this, event);
-            this._execEvent('onScrollMove');
+            this._execEvent('scrollMove');
         },
         _onEnd:function onEnd(event){
           console.log('_onEnd');
@@ -379,7 +379,7 @@
 
             var easing = '';
             if (that.options.onBeforeScrollEnd) that.options.onBeforeScrollEnd.call(that, event);
-            this._execEvent('onBeforeScrollEnd');
+            this._execEvent('beforeScrollEnd');
             // 超过了边界就重新回到边界位
             this.endTime = getTime();
 
@@ -393,7 +393,7 @@
             if ( !this.moved ) {
               console.log('---------onScrollCancel');
                if(this.options.onScrollCancel) this.options.onScrollCancel.call(this, event);
-               this._execEvent('onScrollCancel');
+               this._execEvent('scrollCancel');
                return;
            }
            console.log("flick::",duration,distanceX,distanceY);
@@ -512,7 +512,7 @@
                 this.isInTransition = false;
                 this._unbind('webkitTransitionEnd');
                 if (this.options.onScrollEnd) this.options.onScrollEnd.call(this);
-                this._execEvent('onScrollEnd');
+                this._execEvent('scrollEnd');
                 if ( this.options.probeType ) {
                   this._execEvent('scroll');
                 }
